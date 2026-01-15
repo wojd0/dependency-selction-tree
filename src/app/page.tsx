@@ -36,6 +36,7 @@ import {
   ScrollText,
   Combine,
   Shield,
+  Package,
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -152,7 +153,6 @@ export default function Home() {
     newItems = newItems.map(item => {
       if (categoryItemNames.has(item.name)) {
         if (!isSelectingAll && keepDependencies && dependencyMode === 'force' && requiredDependencies.has(item.name)) {
-          // If unchecking, but this item is a forced dependency, don't change its state
            const isDependedOnByOtherCategory = items.some(otherItem => 
              otherItem.selected &&
              otherItem.type !== category &&
@@ -184,14 +184,17 @@ export default function Home() {
 
   const handleSelectAll = (checked: boolean | 'indeterminate') => {
     const isSelectingAll = checked === true;
-
-    let newItems = items.map(item => {
-       if (!isSelectingAll && keepDependencies && dependencyMode === 'force' && requiredDependencies.has(item.name)) {
-         return item;
-       }
-      return { ...item, selected: isSelectingAll };
-    });
-
+    let newItems;
+    if (isSelectingAll) {
+        newItems = items.map(item => ({...item, selected: true}));
+    } else {
+        newItems = items.map(item => {
+            if (keepDependencies && dependencyMode === 'force' && requiredDependencies.has(item.name)) {
+                return item;
+            }
+            return {...item, selected: false};
+        });
+    }
     setItems(newItems);
   };
 
@@ -228,13 +231,7 @@ export default function Home() {
         </CardHeader>
         <CardContent>
           <div className="mb-4 space-y-4 rounded-lg border bg-background p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <Checkbox id="select-all" checked={allSelectedState} onCheckedChange={handleSelectAll} />
-                <Label htmlFor="select-all" className="text-base font-medium">
-                  Export all
-                </Label>
-              </div>
+            <div className="flex items-center justify-end">
               <div className="flex items-center gap-2">
                 <Switch
                   id="keep-dependencies"
@@ -273,83 +270,101 @@ export default function Home() {
           <Separator className="mb-2" />
 
           <div className="space-y-1">
-            {categories.map((category) => {
-              const categoryItems = items.filter((item) => item.type === category);
-              if (categoryItems.length === 0) return null;
-
-              const Icon = categoryConfig[category]?.icon || Carrot;
-              const selectedInCategory = categoryItems.filter(item => item.selected).length;
-              const categorySelectedState = selectedInCategory === 0 ? false : selectedInCategory === categoryItems.length ? true : 'indeterminate';
-              const isCategoryOpen = openCategories[category];
-
-              return (
-                <Collapsible
-                  key={category}
-                  open={isCategoryOpen}
-                  onOpenChange={(isOpen) => setOpenCategories(prev => ({...prev, [category]: isOpen}))}
-                >
-                  <div className="flex items-center space-x-3 p-2 rounded-md hover:bg-gray-100">
-                    <CollapsibleTrigger asChild>
-                      <button className="flex items-center text-sm">
-                        {isCategoryOpen ? <Minus className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                      </button>
-                    </CollapsibleTrigger>
-                    <Checkbox
-                      id={`select-${category}`}
-                      checked={categorySelectedState}
-                      onCheckedChange={(checked) => handleCategorySelectionChange(category, checked)}
-                    />
-                    <Label
-                      htmlFor={`select-${category}`}
-                      className="flex-1 cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2 font-semibold">
-                        <Icon className="h-5 w-5 text-gray-600" />
-                        {categoryConfig[category]?.title || category}
-                      </div>
-                    </Label>
-                  </div>
-                  <CollapsibleContent>
-                    <div className="pl-8 pt-1">
-                      <div className="relative">
-                        <div className="absolute -left-3.5 top-0 h-full w-px bg-gray-200"></div>
-                        <div className="space-y-1">
-                          {categoryItems.map((item) => {
-                            const isRequired = requiredDependencies.has(item.name);
-                            const isDisabled = keepDependencies && dependencyMode === 'force' && isRequired;
-                            const isInvalid = keepDependencies && dependencyMode === 'warn' && isRequired && !item.selected;
-                            
-                            return (
-                              <div key={item.name} className="relative flex items-center space-x-3 p-2 rounded-md">
-                                <div className="absolute -left-[22px] top-1/2 h-px w-3 bg-gray-200"></div>
-                                <Checkbox
-                                  id={item.name}
-                                  checked={item.selected}
-                                  onCheckedChange={(checked) => handleSelectionChange(item.name, checked as boolean)}
-                                  disabled={isDisabled}
-                                  aria-label={`Select ${item.name}`}
-                                />
-                                <Label
-                                  htmlFor={item.name}
-                                  className={cn(
-                                    "w-full cursor-pointer text-sm font-normal",
-                                    isDisabled ? "cursor-not-allowed text-gray-400" : "text-gray-800",
-                                    isInvalid && "text-red-600 font-medium"
-                                  )}
-                                >
-                                  {item.name}
-                                  {isInvalid && <span className="ml-2 text-xs">(Required by another item)</span>}
-                                </Label>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
+            <div className="flex items-center space-x-3 p-2 rounded-md">
+                <Checkbox id="select-all" checked={allSelectedState} onCheckedChange={handleSelectAll} />
+                <Label htmlFor="select-all" className="flex-1 cursor-pointer">
+                    <div className="flex items-center gap-2 font-semibold">
+                        <Package className="h-5 w-5 text-gray-600" />
+                        Export all
                     </div>
-                  </CollapsibleContent>
-                </Collapsible>
-              );
-            })}
+                </Label>
+            </div>
+            <div className="pl-8 pt-1">
+                <div className="relative">
+                    <div className="absolute -left-3.5 top-0 h-full w-px bg-gray-200"></div>
+                    <div className="space-y-1">
+                        {categories.map((category, index) => {
+                          const categoryItems = items.filter((item) => item.type === category);
+                          if (categoryItems.length === 0) return null;
+
+                          const Icon = categoryConfig[category]?.icon || Carrot;
+                          const selectedInCategory = categoryItems.filter(item => item.selected).length;
+                          const categorySelectedState = selectedInCategory === 0 ? false : selectedInCategory === categoryItems.length ? true : 'indeterminate';
+                          const isCategoryOpen = openCategories[category];
+
+                          return (
+                              <div key={category} className="relative">
+                                  <div className="absolute -left-[22px] top-1/2 h-px w-3 bg-gray-200"></div>
+                                <Collapsible
+                                  open={isCategoryOpen}
+                                  onOpenChange={(isOpen) => setOpenCategories(prev => ({...prev, [category]: isOpen}))}
+                                >
+                                  <div className="flex items-center space-x-3 p-2 rounded-md hover:bg-gray-100">
+                                    <CollapsibleTrigger asChild>
+                                      <button className="flex items-center text-sm">
+                                        {isCategoryOpen ? <Minus className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                                      </button>
+                                    </CollapsibleTrigger>
+                                    <Checkbox
+                                      id={`select-${category}`}
+                                      checked={categorySelectedState}
+                                      onCheckedChange={(checked) => handleCategorySelectionChange(category, checked)}
+                                    />
+                                    <Label
+                                      htmlFor={`select-${category}`}
+                                      className="flex-1 cursor-pointer"
+                                    >
+                                      <div className="flex items-center gap-2 font-semibold">
+                                        <Icon className="h-5 w-5 text-gray-600" />
+                                        {categoryConfig[category]?.title || category}
+                                      </div>
+                                    </Label>
+                                  </div>
+                                  <CollapsibleContent>
+                                    <div className="pl-8 pt-1">
+                                      <div className="relative">
+                                        <div className="absolute -left-3.5 top-0 h-full w-px bg-gray-200"></div>
+                                        <div className="space-y-1">
+                                          {categoryItems.map((item) => {
+                                            const isRequired = requiredDependencies.has(item.name);
+                                            const isDisabled = keepDependencies && dependencyMode === 'force' && isRequired;
+                                            const isInvalid = keepDependencies && dependencyMode === 'warn' && isRequired && !item.selected;
+                                            
+                                            return (
+                                              <div key={item.name} className="relative flex items-center space-x-3 p-2 rounded-md">
+                                                <div className="absolute -left-[22px] top-1/2 h-px w-3 bg-gray-200"></div>
+                                                <Checkbox
+                                                  id={item.name}
+                                                  checked={item.selected}
+                                                  onCheckedChange={(checked) => handleSelectionChange(item.name, checked as boolean)}
+                                                  disabled={isDisabled}
+                                                  aria-label={`Select ${item.name}`}
+                                                />
+                                                <Label
+                                                  htmlFor={item.name}
+                                                  className={cn(
+                                                    "w-full cursor-pointer text-sm font-normal",
+                                                    isDisabled ? "cursor-not-allowed text-gray-400" : "text-gray-800",
+                                                    isInvalid && "text-red-600 font-medium"
+                                                  )}
+                                                >
+                                                  {item.name}
+                                                  {isInvalid && <span className="ml-2 text-xs">(Required by another item)</span>}
+                                                </Label>
+                                              </div>
+                                            )
+                                          })}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </CollapsibleContent>
+                                </Collapsible>
+                              </div>
+                          );
+                        })}
+                    </div>
+                </div>
+            </div>
           </div>
         </CardContent>
       </Card>
