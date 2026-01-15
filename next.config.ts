@@ -1,9 +1,13 @@
 import type {NextConfig} from 'next';
 
+const repo = 'your-repo-name';
+const isProd = process.env.NODE_ENV === 'production';
+
 const nextConfig: NextConfig = {
   output: 'export',
-  // TODO: Replace 'your-repo-name' with the name of your GitHub repository.
-  basePath: process.env.NODE_ENV === 'production' ? '/your-repo-name' : '',
+  // Add assetPrefix so that assets are loaded from the correct path on GitHub Pages
+  assetPrefix: isProd ? `/${repo}/` : '',
+  basePath: isProd ? `/${repo}` : '',
   /* config options here */
   typescript: {
     ignoreBuildErrors: true,
