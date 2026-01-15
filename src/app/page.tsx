@@ -231,16 +231,24 @@ export default function Home() {
         </CardHeader>
         <CardContent>
           <div className="mb-4 space-y-4 rounded-lg border bg-background p-4">
-            <div className="flex items-center">
-              <div className="flex items-center gap-2">
+            <div className="flex items-start">
+              <div className="flex items-start gap-3">
                 <Switch
                   id="keep-dependencies"
                   checked={keepDependencies}
                   onCheckedChange={setKeepDependencies}
+                  className="mt-1"
                 />
-                <Label htmlFor="keep-dependencies" className="text-base font-medium">
-                  Keep Dependencies
-                </Label>
+                <div>
+                  <Label htmlFor="keep-dependencies" className="text-base font-medium">
+                    Keep Dependencies
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    {dataSet === 'pantry'
+                      ? 'Automatically select all ingredients and utensils for a recipe.'
+                      : 'Automatically include all required components for a process.'}
+                  </p>
+                </div>
               </div>
             </div>
             {keepDependencies && (
