@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { initialItems, Item } from '@/app/data';
-import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -19,11 +18,13 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { useToast } from '@/hooks/use-toast';
-import { UtensilsCrossed, Carrot, CookingPot, LoaderCircle } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { UtensilsCrossed, Carrot, CookingPot } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 
 type ItemType = 'recipe' | 'ingredient' | 'kitchen utensil';
+type DependencyMode = 'force' | 'warn';
 
 const categoryConfig: Record<
   ItemType,
@@ -49,8 +50,17 @@ const categoryConfig: Record<
 export default function Home() {
   const [items, setItems] = useState<Item[]>(initialItems);
   const [keepDependencies, setKeepDependencies] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
+  const [dependencyMode, setDependencyMode] = useState<DependencyMode>('force');
+
+  const requiredDependencies = useMemo(() => {
+    const deps = new Set<string>();
+    items.forEach(item => {
+      if (item.selected && item.dependencies) {
+        item.dependencies.forEach(dep => deps.add(dep));
+      }
+    });
+    return deps;
+  }, [items]);
 
   const handleSelectionChange = (itemName: string, checked: boolean) => {
     let newItems = items.map((item) =>
@@ -59,28 +69,17 @@ export default function Home() {
 
     if (keepDependencies) {
       const selectedItems = newItems.filter((item) => item.selected);
-      const requiredDependencies = new Set<string>();
+      const currentRequiredDeps = new Set<string>();
 
       selectedItems.forEach((item) => {
         if (item.dependencies) {
-          item.dependencies.forEach((dep) => requiredDependencies.add(dep));
-        }
-      });
-
-      const deselectedItems = newItems.filter(item => !item.selected);
-      deselectedItems.forEach(item => {
-        if (item.dependencies) {
-          item.dependencies.forEach(dep => {
-            if (selectedItems.every(selected => !selected.dependencies?.includes(dep))) {
-              requiredDependencies.delete(dep);
-            }
-          });
+          item.dependencies.forEach((dep) => currentRequiredDeps.add(dep));
         }
       });
 
       newItems = newItems.map((item) => {
-        const isSelected = item.selected || requiredDependencies.has(item.name);
-        return { ...item, selected: isSelected };
+        const isRequired = currentRequiredDeps.has(item.name);
+        return { ...item, selected: item.selected || isRequired };
       });
     }
 
@@ -99,24 +98,40 @@ export default function Home() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="mb-6 flex items-center justify-between rounded-lg border bg-background p-4">
-            <Label htmlFor="keep-dependencies" className="text-base font-medium">
-              Keep Dependencies
-            </Label>
-            <div className="flex items-center gap-3">
-              {isLoading && <LoaderCircle className="animate-spin text-primary" />}
+          <div className="mb-4 space-y-4 rounded-lg border bg-background p-4">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="keep-dependencies" className="text-base font-medium">
+                Keep Dependencies
+              </Label>
               <Switch
                 id="keep-dependencies"
                 checked={keepDependencies}
                 onCheckedChange={setKeepDependencies}
-                disabled={isLoading}
               />
+            </div>
+            <Separator />
+            <div className="space-y-2">
+               <Label className="text-base font-medium">Dependency Rule</Label>
+               <RadioGroup
+                 value={dependencyMode}
+                 onValueChange={(value) => setDependencyMode(value as DependencyMode)}
+                 className="flex gap-4"
+               >
+                 <div className="flex items-center space-x-2">
+                   <RadioGroupItem value="force" id="force" />
+                   <Label htmlFor="force">Force (Disable deselect)</Label>
+                 </div>
+                 <div className="flex items-center space-x-2">
+                   <RadioGroupItem value="warn" id="warn" />
+                   <Label htmlFor="warn">Warn (Show error)</Label>
+                 </div>
+               </RadioGroup>
             </div>
           </div>
 
           <Separator className="mb-4" />
 
-          <div className={`relative ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}>
+          <div>
             <Accordion type="multiple" defaultValue={categories} className="w-full">
               {categories.map((category) => {
                 const Icon = categoryConfig[category].icon;
@@ -131,26 +146,41 @@ export default function Home() {
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="pl-4">
-                      <div className="grid gap-4 pt-2">
-                        {categoryItems.map((item) => (
-                          <div
-                            key={item.name}
-                            className="flex items-center space-x-3 transition-colors rounded-md p-2 hover:bg-accent/50"
-                          >
-                            <Checkbox
-                              id={item.name}
-                              checked={item.selected}
-                              onCheckedChange={(checked) => handleSelectionChange(item.name, checked as boolean)}
-                              aria-label={`Select ${item.name}`}
-                            />
-                            <Label
-                              htmlFor={item.name}
-                              className="w-full cursor-pointer text-base font-normal text-foreground"
+                      <div className="grid gap-2 pt-2">
+                        {categoryItems.map((item) => {
+                           const isRequired = requiredDependencies.has(item.name);
+                           const isDisabled = dependencyMode === 'force' && isRequired && !item.selected;
+                           const isInvalid = dependencyMode === 'warn' && isRequired && !item.selected;
+
+                           return (
+                            <div
+                              key={item.name}
+                              className={cn(
+                                "flex items-center space-x-3 transition-colors rounded-md p-2",
+                                isInvalid ? "bg-destructive/10" : "hover:bg-accent/50"
+                              )}
                             >
-                              {item.name}
-                            </Label>
-                          </div>
-                        ))}
+                              <Checkbox
+                                id={item.name}
+                                checked={item.selected}
+                                onCheckedChange={(checked) => handleSelectionChange(item.name, checked as boolean)}
+                                disabled={isDisabled}
+                                aria-label={`Select ${item.name}`}
+                              />
+                              <Label
+                                htmlFor={item.name}
+                                className={cn(
+                                  "w-full cursor-pointer text-base font-normal",
+                                  isDisabled ? "cursor-not-allowed text-muted-foreground" : "text-foreground",
+                                  isInvalid && "text-destructive font-medium"
+                                )}
+                              >
+                                {item.name}
+                                {isInvalid && <span className="ml-2 text-xs">(Required by another item)</span>}
+                              </Label>
+                            </div>
+                           )
+                        })}
                       </div>
                     </AccordionContent>
                   </AccordionItem>
