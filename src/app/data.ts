@@ -36,7 +36,6 @@ export const allItemTypes: ItemType[] = [
   'securityPolicy',
 ];
 
-
 export interface Item {
   name: string;
   type: ItemType;
@@ -69,7 +68,6 @@ export const initialItems: Item[] = [
   { name: 'napkin', type: 'kitchen utensil', selected: false },
   { name: 'plate', type: 'kitchen utensil', selected: false },
 ];
-
 
 export const expenseManagementItems: Item[] = [
   // PROCESS AUTOMATION
@@ -147,3 +145,69 @@ export const expenseManagementItems: Item[] = [
   { name: 'finance-access-policy', type: 'securityPolicy', selected: false },
   { name: 'hr-access-policy', type: 'securityPolicy', selected: false },
 ];
+
+import {
+    UtensilsCrossed,
+    Carrot,
+    CookingPot,
+    Workflow,
+    Plug,
+    FileCode,
+    Table,
+    Database,
+    Zap,
+    ClipboardList,
+    ToyBrick,
+    FileText,
+    ScrollText,
+    Combine,
+    Shield,
+  } from 'lucide-react';
+
+export type DependencyMode = 'force' | 'warn';
+export type DataSet = 'pantry' | 'expense';
+
+export interface CategoryConfig {
+    title: string;
+    icon: React.ElementType;
+}
+
+const pantryCategoryConfig: Record<string, CategoryConfig> = {
+    recipe: {
+      title: 'Recipes',
+      icon: UtensilsCrossed,
+    },
+    ingredient: {
+      title: 'Ingredients',
+      icon: Carrot,
+    },
+    'kitchen utensil': {
+      title: 'Kitchen Utensils',
+      icon: CookingPot,
+    },
+  };
+  
+const expenseCategoryConfig: Record<string, CategoryConfig> = {
+    processes: { title: 'Processes', icon: Workflow },
+    connectors: { title: 'Connectors', icon: Plug },
+    scripts: { title: 'Scripts', icon: FileCode },
+    decisionTables: { title: 'Decision Tables', icon: Table },
+    dataModels: { title: 'Data Models', icon: Database },
+    triggers: { title: 'Triggers', icon: Zap },
+    forms: { title: 'Forms', icon: ClipboardList },
+    formWidgets: { title: 'Form Widgets', icon: ToyBrick },
+    contentTypes: { title: 'Content Types', icon: FileText },
+    schemas: { title: 'Schemas', icon: ScrollText },
+    mixins: { title: 'Mixins', icon: Combine },
+    securityPolicy: { title: 'Security Policy', icon: Shield },
+};
+  
+export const categoryConfigs = {
+    pantry: pantryCategoryConfig,
+    expense: expenseCategoryConfig,
+}
+  
+export const dataSets = {
+    pantry: initialItems,
+    expense: expenseManagementItems,
+}
