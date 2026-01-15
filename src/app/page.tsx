@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from 'react';
-import { manageDependencies } from '@/ai/flows/automatic-dependency-management';
 import { initialItems, Item } from '@/app/data';
 import { Button } from '@/components/ui/button';
 import {
@@ -53,46 +52,39 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleSelectionChange = async (itemName: string, checked: boolean) => {
-    const newItems = items.map((item) =>
+  const handleSelectionChange = (itemName: string, checked: boolean) => {
+    let newItems = items.map((item) =>
       item.name === itemName ? { ...item, selected: !!checked } : item
     );
 
-    if (!keepDependencies) {
-      setItems(newItems);
-      return;
-    }
-
-    setIsLoading(true);
-    try {
+    if (keepDependencies) {
       const selectedItems = newItems.filter((item) => item.selected);
-      // We need to provide the original items with dependency info to the AI
-      const availableItems = initialItems.map(({ selected, ...rest }) => rest);
+      const requiredDependencies = new Set<string>();
 
-      const result = await manageDependencies({
-        selectedItems,
-        availableItems,
+      selectedItems.forEach((item) => {
+        if (item.dependencies) {
+          item.dependencies.forEach((dep) => requiredDependencies.add(dep));
+        }
       });
-      
-      const updatedSelectedNames = new Set(result.updatedItems.map(item => item.name));
 
-      const finalItemsState = items.map(item => ({
-        ...item,
-        selected: updatedSelectedNames.has(item.name)
-      }));
-      
-      setItems(finalItemsState);
-
-    } catch (error) {
-      console.error('AI dependency management failed:', error);
-      toast({
-        title: 'Error updating dependencies',
-        description: 'The AI model could not process the request. Please try again.',
-        variant: 'destructive',
+      const deselectedItems = newItems.filter(item => !item.selected);
+      deselectedItems.forEach(item => {
+        if (item.dependencies) {
+          item.dependencies.forEach(dep => {
+            if (selectedItems.every(selected => !selected.dependencies?.includes(dep))) {
+              requiredDependencies.delete(dep);
+            }
+          });
+        }
       });
-    } finally {
-      setIsLoading(false);
+
+      newItems = newItems.map((item) => {
+        const isSelected = item.selected || requiredDependencies.has(item.name);
+        return { ...item, selected: isSelected };
+      });
     }
+
+    setItems(newItems);
   };
 
   const categories = Object.keys(categoryConfig) as ItemType[];
@@ -103,7 +95,7 @@ export default function Home() {
         <CardHeader>
           <CardTitle className="font-headline text-3xl">Smart Pantry</CardTitle>
           <CardDescription>
-            Select items and let AI manage the dependencies for you.
+            Select items and their dependencies will be automatically managed.
           </CardDescription>
         </CardHeader>
         <CardContent>
