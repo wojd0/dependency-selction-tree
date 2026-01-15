@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from 'next/dynamic';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -21,7 +22,7 @@ interface CategoryNodeProps {
   onCategoryOpenChange: (updater: (prev: Record<string, boolean>) => Record<string, boolean>) => void;
 }
 
-export function CategoryNode({
+function CategoryNodeComponent({
   items,
   category,
   categoryConfig,
@@ -87,3 +88,8 @@ export function CategoryNode({
     </div>
   );
 }
+
+
+export const CategoryNode = dynamic(() => Promise.resolve(CategoryNodeComponent), {
+  ssr: false,
+});
